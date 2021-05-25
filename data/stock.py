@@ -126,8 +126,9 @@ print(maotai_total*maotai_total)
 
 #  计算贵州茅台的市盈率
 
-
-
+q1 = query(valuation.pe_ratio).filter(valuation.code == '600519.XSHG')
+current_pe = get_fundamentals(q1, date=datetime.datetime.today())
+print(current_pe['pe_ratio'][0])
 
 
 
