@@ -123,3 +123,11 @@ print(maotai_total*maotai_total)
 # 问题1： serials对象  和 dataframe 对象如何取值
 #  serials   current_close['close'][0]
 #  dataframe   cp_total['capitalization'][0]
+
+#  计算贵州茅台的市盈率
+
+
+
+
+
+
