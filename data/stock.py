@@ -4,63 +4,107 @@ import datetime
 
 auth('18806537016', '82593768')
 
-#  获取000001在2021.5.21日之前两天的行情数据，取每天行情数据
-#  最好去和网上的数据对比一下
-#  上海证券交易所	.XSHG	600519.XSHG	贵州茅台
-#  深圳证券交易所	.XSHE	000001.XSHE	平安银行
 
-df = get_price(
-    '000001.XSHE',
-    count=5,
-    end_date='2021-05-21',
-    frequency='daily')
-# print(df)
-
-#  获取A股所有的股票数据
-df1 = get_all_securities(['stock']).index
-# print(df1)
-
-#  显示A股前3条的股票行情数据
-# stock_codes = get_all_securities(['stock']).index[:3]
-# for stock_code in stock_codes:
-#     current_df = get_price(stock_code, count=5, end_date='2021-05-21', frequency='daily')
-#     print('=====================', stock_code)
-#     print(current_df)
-#     time.sleep(3)
+def get_stock_list():
+    """
+    获取所有A股股票的代码列表
+    @return: 股票代码列表
+    上海证券交易所	.XSHG
+    深圳证券交易所	.XSHE
+    @rtype: list
+    """
+    stock_lists = get_all_securities(['stock']).index
+    return stock_lists
 
 
-#  使用pandas.resample函数【转换时间序列频次(日k转周K，周k转月K)，统计汇总（统计周成交量）】
-df = get_price(
-    '000607.XSHE',
-    count=20,
-    end_date='2021-05-21',
-    frequency='daily')
-# 为每一行数据添加weekday选项，用于确定是周几，0-6,0-4就是周一到周五
-df['weekday'] = df.index.weekday
-# print(df)
-
-# 新建一个dataframe，用于周K的统计
-df_week = pd.DataFrame()
-df_week['open'] = df['open'].resample('W').first()
-df_week['close'] = df['close'].resample('W').last()
-df_week['high'] = df['high'].resample('W').max()
-df_week['low'] = df['low'].resample('W').min()
-
-# resample汇总
-df_week['volume(sum)'] = df['volume'].resample('W').sum()
-df_week['money(sum)'] = df['money'].resample('W').sum()
+def get_single_stock(code, startdate, enddate, per_fre='daily'):
+    """
+    获取单个股票的行情数据
+    :param code: 股票代码
+    :param startdate: 开始时间
+    :param enddate: 结束时间
+    :param per_fre: 默认是天
+    :return: 单个股票的行情数据
+    :rtype: dataframe
+    """
+    single_data = get_price(
+        code,
+        start_date=startdate,
+        end_date=enddate,
+        frequency=per_fre)
+    return single_data
 
 
-# print(df_week)
+def export_data(data, type, save_name):
+    """
+    导出行情数据
+    @param data: 股票的dataframe 数据
+    @type data: dataframe
+    @param type: 导出的数据的类型
+    @type type:  price 价格数据,securities 行情数据,fundamentals 财务数据
+    @param save_name: 保存名称
+    @type save_name: str
+    @return: csv
+    @rtype: csv
+    """
+    save_root = 'E:/etrader/data' + '/csv/' + type + '/' + save_name + '.csv'
+    data.to_csv(save_root)
 
-# 查询股票财务数据
-caiwu_data = get_fundamentals(
-    query(indicator),
-    statDate='2020')  # 取出2020一整年的财务指标数据
-# caiwu_data.to_csv('test.csv')
+
+def transfer_price_freq(data, time_freq='W'):
+    """
+    将日K转换为周K数据
+    @param data: 传入的dataframe数据
+    @type data: dataframe
+    @param time_freq: 需要转换成的周期
+    @type time_freq: w（星期）
+    @return: 转换后的周期
+    @rtype: dataframe
+    """
+    df_trans = pd.DataFrame()
+    df_trans['open'] = data['open'].resample(time_freq).first()
+    df_trans['close'] = data['close'].resample(time_freq).last()
+    df_trans['high'] = data['high'].resample(time_freq).max()
+    df_trans['low'] = data['low'].resample(time_freq).min()
+    return df_trans
+
+
+def get_single_finance(code, date, statDate):
+    """
+    获取单个股票的财务指标
+    @param code: 股票代码
+    @type code: str
+    @param code: 查询日期
+    @type code: str
+    @param statDate:  季度或者年度时间
+    @type statDate:
+    @return: 股票的财务指标
+    @rtype: dataframe
+    """
+    df = get_fundamentals(query(indicator).filter(indicator.code == code), date=date, statDate=statDate)
+    return df
+
+
+def get_single_valuation(code, date, statDate):
+    """
+    获取单个股票的估值数据
+    @param code: 股票代码
+    @type code: str
+    @param date:查询时间
+    @type date: str
+    @param statDate:季度或者季度时间
+    @type statDate: str
+    @return: 估值数据
+    @rtype: dataframe
+    """
+    df = get_fundamentals(query(valuation).filter(valuation.code == code), date=date, statDate=statDate)
+    return df
+
+
+
 
 """
-打*的为重点关注指标
+财务指标
 code	股票代码	带后缀.XSHE/.XSHG
 pubDate	日期	公司发布财报日期
 statDate	日期	财报统计的季度的最后一天, 比如2015-03-31, 2015-06-30
@@ -98,37 +142,28 @@ inc_net_profit_to_shareholders_annual	归属母公司股东的净利润环比增
 """
 
 
-#  基于盈利指标 筛选股票
-# avg_operating_profit = caiwu_data['operating_profit'].mean()
-#  根据财务指标筛选出股票  1 每股收益大于0  2 净收益 大于平均数  3 净资产收益率大于10%  4 利润同比增加率大于10%
-# choice_data = caiwu_data[(caiwu_data['eps'] > 0) & (caiwu_data['operating_profit'] > avg_operating_profit) & (
-#     caiwu_data['roe'] > 11) & (caiwu_data['inc_operation_profit_year_on_year'] > 10)]
-# choice_data.to_csv('test1.csv')
 
-
-
-#  企业估值(略)
 
 # 作业1 计算茅台当天市值
-current_close = get_price('600519.XSHG', start_date=datetime.datetime.today(), end_date=datetime.datetime.today())
-maotai_close = current_close['close'][0]
-
-# 查询茅台总股本
-q = query(valuation.capitalization).filter(valuation.code=='600519.XSHG')
-cp_total = get_fundamentals(q, date=datetime.datetime.now())
-maotai_total = cp_total['capitalization'][0]
-
-print(maotai_total*maotai_total)
-
-# 问题1： serials对象  和 dataframe 对象如何取值
-#  serials   current_close['close'][0]
-#  dataframe   cp_total['capitalization'][0]
-
-#  计算贵州茅台的市盈率
-
-q1 = query(valuation.pe_ratio).filter(valuation.code == '600519.XSHG')
-current_pe = get_fundamentals(q1, date=datetime.datetime.today())
-print(current_pe['pe_ratio'][0])
-
-
-
+# current_close = get_price(
+#     '600519.XSHG',
+#     start_date=datetime.datetime.today(),
+#     end_date=datetime.datetime.today())
+# maotai_close = current_close['close'][0]
+#
+# # 查询茅台总股本
+# q = query(valuation.capitalization).filter(valuation.code == '600519.XSHG')
+# cp_total = get_fundamentals(q, date=datetime.datetime.now())
+# maotai_total = cp_total['capitalization'][0]
+#
+# print(maotai_total * maotai_total)
+#
+# # 问题1： serials对象  和 dataframe 对象如何取值
+# #  serials   current_close['close'][0]
+# #  dataframe   cp_total['capitalization'][0]
+#
+# #  计算贵州茅台的市盈率
+#
+# q1 = query(valuation.pe_ratio).filter(valuation.code == '600519.XSHG')
+# current_pe = get_fundamentals(q1, date=datetime.datetime.today())
+# print(current_pe['pe_ratio'][0])
