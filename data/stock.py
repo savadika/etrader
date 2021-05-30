@@ -4,6 +4,14 @@ import datetime
 
 auth('18806537016', '82593768')
 
+# 设置行列不忽略
+pd.set_option('display.max_rows', 1000)
+pd.set_option('display.max_columns', 1000)
+
+# 设置导出路径
+export_root = 'E:/etrader/data/csv/'
+
+
 
 def get_stock_list():
     """
@@ -32,6 +40,8 @@ def get_single_stock(code, startdate, enddate, per_fre='daily'):
         start_date=startdate,
         end_date=enddate,
         frequency=per_fre)
+    # 为首条数据添加表头
+    single_data.index.names = ['date',]
     return single_data
 
 
@@ -47,8 +57,9 @@ def export_data(data, type, save_name):
     @return: csv
     @rtype: csv
     """
-    save_root = 'E:/etrader/data' + '/csv/' + type + '/' + save_name + '.csv'
+    save_root = export_root + type + '/' + save_name + '.csv'
     data.to_csv(save_root)
+    print('已成功导出', save_root)
 
 
 def transfer_price_freq(data, time_freq='W'):
